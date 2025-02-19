@@ -50,7 +50,7 @@ def make_encoder(activation, num_topics, layer_sizes):
   def encoder(bag_of_kmers):
     with tf.name_scope("encoder"):
       return tfd.Dirichlet(concentration=encoder_net(bag_of_kmers),
-                           name="topics_posterior")
+                           name="topics_posterior", allow_nan_stats=False)
 
   return encoder
 
@@ -129,7 +129,7 @@ def model_fn(features, labels, mode, params, config):
 
   topics_posterior = encoder(features)
   topic_posterior_probs = topics_posterior.concentration
-  topics = topics_posterior.sample(seed=234)
+  topics = topics_posterior.sample(seed=108)
   random_reconstruction, reconstructed_probs = decoder(topics)
 
   ## enable this if you want to reconstruct kmers
@@ -327,7 +327,3 @@ def get_topics_strings(topics_kmers, alpha, vocabulary,
     res.append(" ".join(l))
 
   return np.array(res)
-
-
-
-

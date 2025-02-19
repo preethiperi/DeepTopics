@@ -16,7 +16,7 @@ import tensorflow_probability as tfp
 
 ## local imports
 from dataset import build_input_fns, build_fake_input_fns, read_vocabulary
-from model import model_fn, save_topic_posterior
+from model_modified import model_fn, save_topic_posterior
 
 tfb = tfp.bijectors
 tfd = tfp.distributions
@@ -134,22 +134,41 @@ def main(argv):
   )
 
   #Fix seed here to minimize variance across runs
-  #tf.random.set_seed(1)
+  tf.random.set_seed(7)
 
   #### print top kmers from learned topics
   if(params['mode'] == "train"):
+    converged = False
+    prev_loss = np.inf
     for _ in range(params['max_steps'] // params['viz_steps']):
-      estimator.train(train_input_fn, steps=params['viz_steps'])
-      eval_results = estimator.evaluate(eval_input_fn)
-      for key, value in eval_results.items():
-        print(key)
-        if key == "topics":
-          for s in value:
-            print(s)
-        else:
-          print(str(value))
+      if not converged:
+        print("Not converged yet, still training")
+        estimator.train(train_input_fn, steps=params['viz_steps'])
+        eval_results = estimator.evaluate(eval_input_fn)
+        for key, value in eval_results.items():
+          print(key)
+          if key == "topics":
+            for s in value:
+              print(s)
+          else:
+            print(str(value))
+          # Add condition to stop if the decrease in loss is 1% or less
+          if key == "loss":
+            curr_loss = value
+            print("Current loss: ", str(curr_loss))
+            print("Previous loss: ", str(prev_loss))
+            if prev_loss != np.inf:
+              loss_difference = ((prev_loss - curr_loss) / prev_loss) * 100
+              print("Percent decrease in loss: ", str(loss_difference))
+              if loss_difference < 0.01: # Want a 0.01% decrease or more
+                converged = True
+                print("Stopping training because convergence condition has been met")
+              else:
+                prev_loss = curr_loss
+            else:
+              prev_loss = curr_loss
+          print("")
         print("")
-      print("")
 
   print("[LOG] FINISHED TRAINING") 
   if(params['mode'] == "beta"):
